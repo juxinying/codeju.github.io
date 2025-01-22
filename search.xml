@@ -1,0 +1,769 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>CompletableFuture常用方法</title>
+    <url>/code-ju/2021/05/23/CompletableFuture%E5%B8%B8%E7%94%A8%E6%96%B9%E6%B3%95/</url>
+    <content><![CDATA[<h2 id="CompletableFuture继承体系"><a href="#CompletableFuture继承体系" class="headerlink" title="CompletableFuture继承体系"></a>CompletableFuture继承体系</h2><p><img src="/code-ju/images/pasted-16.png" alt="upload successful"></p>
+<h2 id="CompletionStage接口"><a href="#CompletionStage接口" class="headerlink" title="CompletionStage接口"></a>CompletionStage接口</h2><p>用于异步执行中的阶段处理，其中包含了40多种方法，目的是为函数式编程中的流式调用准备的，通过CompletionStage接口，可以在一个执行结果上进行多次流式调用，以此得到最终的结果。</p>
+<p>其中阶段执行的函数式接口 分为 Function、Consumer、Runnable</p>
+<p>Function：有输入、有输出，用上一阶段输出的结果做为入参执行计算产生新的结果。</p>
+<p>Consumer：有输入、无输出，用上一阶段输出的结果作为入参执行计算但不产生新的结果。</p>
+<p>Runnable：无输入、无输出，不依据上一阶段输出的结果，只需要上一阶段执行完毕就可以执行计算但不产生新的结果。</p>
+<h3 id="使用runAsync和supplyAsync创建子任务"><a href="#使用runAsync和supplyAsync创建子任务" class="headerlink" title="使用runAsync和supplyAsync创建子任务"></a>使用runAsync和supplyAsync创建子任务</h3><h4 id="1、supplyAsync"><a href="#1、supplyAsync" class="headerlink" title="1、supplyAsync"></a>1、supplyAsync</h4><p><img src="/code-ju/images/pasted-17.png" alt="upload successful"><br>Supplier：供应者，是一个函数式接口，没有入参，有一个返回值，当调用supplyAsync()方法后，会开启一个新的线程，传入的Supplier参数中的代码就会跑到新的线程中去执行。</p>
+<p><img src="/code-ju/images/pasted-18.png" alt="upload successful"></p>
+<h4 id="2、join"><a href="#2、join" class="headerlink" title="2、join"></a>2、join</h4><p>join()返回值的类型就是CompletableFuture的泛型，join()返回值就是Supplier的返回值。join()会等待任务执行结束，然后返回任务的执行结果。<br>join()不需要强制捕获异常，抛出的异常都是运行时异常（CompletionException、CancellationException）。</p>
+<h4 id="3、thenCompose（连接）"><a href="#3、thenCompose（连接）" class="headerlink" title="3、thenCompose（连接）"></a>3、thenCompose（连接）</h4><p>上一阶段任务执行完毕有结果后，将结果交给下一阶段去执行并返回结果。</p>
+<p><img src="/code-ju/images/pasted-19.png" alt="upload successful"></p>
+<p><img src="/code-ju/images/pasted-20.png" alt="upload successful"></p>
+<h4 id="4、thenCombine（结合）"><a href="#4、thenCombine（结合）" class="headerlink" title="4、thenCombine（结合）"></a>4、thenCombine（结合）</h4><p>上两个阶段任务执行完毕后，用BiFunction函数接收两个返回值作为下一阶段的入参继续执行并返回结果。</p>
+<p><img src="/code-ju/images/pasted-21.png" alt="upload successful"></p>
+<p><img src="/code-ju/images/pasted-22.png" alt="upload successful"></p>
+<h4 id="5、exceptionally"><a href="#5、exceptionally" class="headerlink" title="5、exceptionally"></a>5、exceptionally</h4><p>将上面阶段出现的异常进行处理。</p>
+<p><img src="/code-ju/images/pasted-23.png" alt="upload successful"></p>
+<h4 id="6、applyToEither"><a href="#6、applyToEither" class="headerlink" title="6、applyToEither"></a>6、applyToEither</h4><p>比较两个异步线程的执行效率，哪个线程最先执行完毕，将结果作为下一阶段的入参继续执行并返回最终结果。</p>
+<p><img src="/code-ju/images/pasted-24.png" alt="upload successful"></p>
+<p><img src="/code-ju/images/pasted-25.png" alt="upload successful"></p>
+]]></content>
+      <categories>
+        <category>Thread</category>
+      </categories>
+      <tags>
+        <tag>CompletableFuture</tag>
+        <tag>Future</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>什么是可见性</title>
+    <url>/code-ju/2023/03/06/%E4%BB%80%E4%B9%88%E6%98%AF%E5%8F%AF%E8%A7%81%E6%80%A7/</url>
+    <content><![CDATA[<h2 id="什么是可见性"><a href="#什么是可见性" class="headerlink" title="什么是可见性"></a>什么是可见性</h2><p>可见性就是在一个地方进行写操作，写成功后在另一个地方进行读操作读到的结果是写后的最新值</p>
+<pre><code>static boolean flag = true;
+public static void main(String[] args) &#123;
+    flag = false;
+    System.out.println(flag);
+&#125;
+输出：true
+</code></pre>
+<p>单线程可以保证可见性，所以加一个线程试试看</p>
+<p>示例1：</p>
+<pre><code>static boolean flag = true;
+public static void main(String[] args) throws InterruptedException &#123;
+    new Thread(() -&gt; &#123;
+        while (flag)&#123;
+        &#125;
+    &#125;).start();
+    //为了保证写的操作在读操作之后。验证读操作是否能读取到写后的最新值
+    Thread.sleep(1000);
+    flag = false;
+    System.out.println(false);
+&#125;
+
+输出：false
+程序没有执行结束
+</code></pre>
+<p>示例2：</p>
+<pre><code>static boolean flag = true;
+public static void main(String[] args) throws InterruptedException &#123;
+    new Thread(() -&gt; &#123;
+        while (flag)&#123;
+            System.out.println(123);
+        &#125;
+    &#125;).start();
+    Thread.sleep(1000);
+    flag = false;
+    System.out.println(false);
+&#125;
+
+输出：
+123
+123
+.......
+123
+false
+程序执行结束
+</code></pre>
+<p>示例1和2的区别在于“System.out.println(123);”，由于示例1中的while循环体里面是空语句，没有给子线程一个机会让他去读取主存里面的flag的最新值，一直再读取CPU的缓存。</p>
+<h2 id="volatile"><a href="#volatile" class="headerlink" title="volatile"></a>volatile</h2><p>通过添加volatile关键字，使得flag强制刷新，在主存和localCache之间保持强制一致性</p>
+<pre><code>static volatile boolean flag = true;
+public static void main(String[] args) throws InterruptedException &#123;
+    new Thread(() -&gt; &#123;
+        while (flag)&#123;
+        &#125;
+    &#125;).start();
+    Thread.sleep(1000);
+    flag = false;
+    System.out.println(false);
+&#125;
+
+输出：false
+程序执行结束
+</code></pre>
+<h2 id="volatile的传染性"><a href="#volatile的传染性" class="headerlink" title="volatile的传染性"></a>volatile的传染性</h2><pre><code>static volatile Test test = new Test(99,99);
+
+static class Test&#123;
+    private int a;
+    private int b;
+
+    public int getA() &#123;
+        return a;
+    &#125;
+    public void setA(int a) &#123;
+        this.a = a;
+    &#125;
+
+    public int getB() &#123;
+        return b;
+    &#125;
+    public void setB(int b) &#123;
+        this.b = b;
+    &#125;
+
+    public Test(int a, int b) &#123;
+        this.a = a;
+        this.b = b;
+    &#125;
+&#125;
+
+public static void main(String[] args) &#123;
+    for (int i = 0; i &lt; 5; i++) &#123;
+        int a = i,b = i;
+        //写线程
+        CompletableFuture&lt;Void&gt; t1 = CompletableFuture.runAsync(() -&gt; &#123;
+            test.setA(a);
+            try &#123;
+                Thread.sleep(1000);
+            &#125; catch (InterruptedException e) &#123;
+                e.printStackTrace();
+            &#125;
+            test.setB(b);
+        &#125;);
+        //读线程
+        CompletableFuture&lt;Void&gt; t2 = CompletableFuture.runAsync(() -&gt; &#123;
+            int A = test.getA();
+            int B = test.getB();
+            System.out.println(&quot;A = &quot; + A + &quot;  B = &quot; + B);
+        &#125;);
+        t1.join();
+        t2.join();
+    &#125;
+&#125;
+
+输出：
+A = 0  B = 99
+A = 0  B = 0
+A = 2  B = 1
+A = 2  B = 2
+A = 4  B = 3
+程序执行结束
+</code></pre>
+<p>由此可见，被volatile修饰的对象的内部属性并不具有可见性，反之用volatile修饰的内部属性也不能保证所在对象的可见性，volatile不具有传染性</p>
+<h2 id="volatile和synchronize的区别"><a href="#volatile和synchronize的区别" class="headerlink" title="volatile和synchronize的区别"></a>volatile和synchronize的区别</h2><p>volatile是作用在变量上的，比较轻量。synchronize可以作用在变量和方法上，相对重量。<br>volatile只能保证可见性，无法保证原子性。synchronize既可以保证可见性又可以保证原子性。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>红黑树的定义与性质</title>
+    <url>/code-ju/2021/11/27/%E7%BA%A2%E9%BB%91%E6%A0%91%E7%9A%84%E6%80%A7%E8%B4%A8%E4%B8%8E%E6%80%A7%E8%B4%A8/</url>
+    <content><![CDATA[<h2 id="二叉搜索树BST"><a href="#二叉搜索树BST" class="headerlink" title="二叉搜索树BST"></a>二叉搜索树BST</h2><p>任意一个结点的左子树的结点都比它小，右子树的结点都比它大<br>不管是插入还是读取，都只需要跟每一层的一个结点做比较即可。<br>读写的复杂度是完全依赖于树的深度。<br>插入和查询的时间复杂度都是O(logn)</p>
+<p><img src="/code-ju/images/pasted-10.png" alt="upload successful"><br>当数据是连续自增或者自减的时候，树状的存储结构就会变更线性的存储结构，那这种情况下，读写的复杂度还是依赖于树的深度，插入和查询的时间复杂度都变成了O(n)</p>
+<p><img src="/code-ju/images/pasted-9.png" alt="upload successful"></p>
+<h2 id="二分查找法"><a href="#二分查找法" class="headerlink" title="二分查找法"></a>二分查找法</h2><p>一个有序的数组，在查找的一个值的时候，先找数组中间的那个值，如果当前值比中间值这个值大，那就往中间值的右边继续查找，如果当前值比中间值要小，就往中间值的左边继续查找。<br>二分查找法最差情况下的时间复杂度也是O(logn)，但是BST最差情况下会退化成O(n)</p>
+<h2 id="自平衡二叉树AVL"><a href="#自平衡二叉树AVL" class="headerlink" title="自平衡二叉树AVL"></a>自平衡二叉树AVL</h2><p>本身继承自二叉搜索树，任意一个节点的左子树和右子树的深度差小于等于1，读和写在最差情况下的时间复杂度也是O(logn)</p>
+<h2 id="红黑树的定义"><a href="#红黑树的定义" class="headerlink" title="红黑树的定义"></a>红黑树的定义</h2><p>红黑树是一棵平衡二叉树，它在最坏的情况下可以保证操作的时间复杂度是O(lgn)。<br>它在每个节点上增加了一个存储位来表示节点的颜色，Red or Black。<br>树中的每个节点都包含了五个属性，color、key、left、right、p。</p>
+<h2 id="红黑树的性质"><a href="#红黑树的性质" class="headerlink" title="红黑树的性质"></a>红黑树的性质</h2><p>1、每一个节点要么是红节点、要么是黑节点<br>2、根节点（root）是黑色<br>3、每一个叶子结点都是黑色的<br>4、如果父节点是红色的，那么它的子节点一定是黑色的<br>5、对任意一个节点、从该节点到其所有后代叶子结点的简单路径上，都包含了相同数量的黑节点<br>6、新插入的结点是一个红结点</p>
+<h2 id="为什么红黑树是一种好的搜索树"><a href="#为什么红黑树是一种好的搜索树" class="headerlink" title="为什么红黑树是一种好的搜索树"></a>为什么红黑树是一种好的搜索树</h2><p>BST会出现不平衡的问题，可能左子树很短右子树很长，在查询时甚至会由O(logn)退化成O(n)，AVL能保证左右深度差小于等于1，因此查询效率高，但是每次插入和删除需要变换的次数会更多，红黑树是介于不平衡和完全平衡之间的二叉树，时间复杂度是O(logn)，并且在最差情况下：左右深度差相差一倍，跟AVL相比这种相对宽松的条件就使得在插入结点时变换次数更少，因此写的性能相对更高。</p>
+<p><img src="/code-ju/images/pasted-13.png" alt="upload successful"></p>
+]]></content>
+      <categories>
+        <category>数据结构</category>
+      </categories>
+      <tags>
+        <tag>红黑树</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringIOC</title>
+    <url>/code-ju/2021/04/19/SpringIOC/</url>
+    <content><![CDATA[<h2 id="IOC：依赖注入-即控制反转"><a href="#IOC：依赖注入-即控制反转" class="headerlink" title="IOC：依赖注入 即控制反转"></a>IOC：依赖注入 即控制反转</h2><p>由IOC容器来负责管理对象的生命周期以及对象之间的关系.</p>
+<p>IOC的理念就是让别人为你服务.</p>
+<p>常见的IOC容器有：ApplicationContext 和 BeanFactory.</p>
+<h2 id="IOC的大致流程"><a href="#IOC的大致流程" class="headerlink" title="IOC的大致流程"></a>IOC的大致流程</h2><p>Spring需要通过控制反转来自己创建Bean，就需要解析配置文件，把配置文件的内容转换为可识别的数据结构，依次实例化相关对象，注入对象之间的依赖关系。</p>
+<p><img src="/code-ju/images/pasted-26.png" alt="upload successful"></p>
+<h2 id="手写一个IOC容器"><a href="#手写一个IOC容器" class="headerlink" title="手写一个IOC容器"></a>手写一个IOC容器</h2><h3 id="1、定义Bean的基本信息：BeanDefinition"><a href="#1、定义Bean的基本信息：BeanDefinition" class="headerlink" title="1、定义Bean的基本信息：BeanDefinition"></a>1、定义Bean的基本信息：BeanDefinition</h3><pre><code>@Data
+public class BeanDefinition &#123;
+    /**
+     * Bean的名字
+     */
+    private String beanName;
+    /**
+     * Bean的全限定路径
+     */
+    private String className;
+
+    /**
+     * 构造参数
+     */
+    private List&lt;ConstructorValues&gt; constructors;
+
+    /**
+     * 属性
+     */
+    private List&lt;PropertyValues&gt; propertys;
+
+    public List&lt;ConstructorValues&gt; getConstructors() &#123;
+        if(null == constructors)&#123;
+            this.constructors = new ArrayList&lt;&gt;();
+        &#125;
+        return constructors;
+    &#125;
+
+    public List&lt;PropertyValues&gt; getPropertys() &#123;
+        if(null == propertys)&#123;
+            this.propertys = new ArrayList&lt;&gt;();
+        &#125;
+        return propertys;
+    &#125;
+&#125;
+</code></pre>
+<p>构造器</p>
+<pre><code>@Data
+public class ConstructorValues &#123;
+    /**
+     * 参数名
+     */
+    private String name;
+    /**
+     * 参数类型，全限定路径
+     */
+    private String type;
+    /**
+     * 参数值
+     */
+    private Object value;
+
+    public ConstructorValues(String name, String type, Object value) &#123;
+        this.name = name;
+        this.type = type;
+        this.value = value;
+    &#125;
+&#125;
+</code></pre>
+<p>属性</p>
+<pre><code>@Data
+public class PropertyValues &#123;
+    /**
+     * 参数名
+     */
+    private String name;
+    /**
+     * 参数值
+     */
+    private Object value;
+    /**
+     * 参数类型
+     */
+    private String type;
+&#125;
+</code></pre>
+<h3 id="2、定义工具类：BeanUtils，完成bean的实例化"><a href="#2、定义工具类：BeanUtils，完成bean的实例化" class="headerlink" title="2、定义工具类：BeanUtils，完成bean的实例化"></a>2、定义工具类：BeanUtils，完成bean的实例化</h3><pre><code>public class BeanUtils &#123;
+
+    public static Object instance(Constructor constructor, Object... args) throws Exception&#123;
+        constructor.setAccessible(true);
+        return constructor.newInstance(args);
+    &#125;
+
+    public static void setFieldValue(Field field,Object bean,Object value) throws Exception&#123;
+        field.setAccessible(true);
+        field.set(bean,value);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="3、定义顶级获取Bean的接口：BeanFactory"><a href="#3、定义顶级获取Bean的接口：BeanFactory" class="headerlink" title="3、定义顶级获取Bean的接口：BeanFactory"></a>3、定义顶级获取Bean的接口：BeanFactory</h3><pre><code>public interface BeanFactory &#123;
+    /**
+     * 获取bean
+     * @param beanName
+     * @return
+     */
+    Object getBean(String beanName) throws Exception;
+&#125;
+</code></pre>
+<h3 id="4、定义BeanFactory的实现类ApplicationContext，实现bean的获取和bean的创建"><a href="#4、定义BeanFactory的实现类ApplicationContext，实现bean的获取和bean的创建" class="headerlink" title="4、定义BeanFactory的实现类ApplicationContext，实现bean的获取和bean的创建"></a>4、定义BeanFactory的实现类ApplicationContext，实现bean的获取和bean的创建</h3><pre><code>public class ApplicationContext implements BeanFactory&#123;
+
+    private final Map&lt;String,Object&gt; beanMap = new ConcurrentHashMap&lt;&gt;();
+
+    private final Map&lt;String, BeanDefinition&gt; beanDefinitionMap = new ConcurrentHashMap(256);
+
+    @Override
+    public Object getBean(String beanName) throws Exception &#123;
+        if(null == beanMap.get(beanName))&#123;
+            //创建bean
+            Object bean = doCreateBean(beanDefinitionMap.get(beanName));
+            //加入缓存
+            beanMap.put(beanName,bean);
+            return bean;
+        &#125;
+        return beanMap.get(beanName);
+    &#125;
+
+    private Object doCreateBean(BeanDefinition beanDefinition) throws Exception&#123;
+        //实例化对象
+        Object bean = this.autowireConstructor(beanDefinition);
+        //属性注入
+        populateBean(bean,beanDefinition);
+        return bean;
+    &#125;
+
+    private Object autowireConstructor(BeanDefinition beanDefinition) throws Exception&#123;
+        Class&lt;?&gt; aClass = Class.forName(beanDefinition.getClassName());
+        List&lt;ConstructorValues&gt; constructors = beanDefinition.getConstructors();
+
+        Class[] argClass = new Class[constructors.size()];
+        Object[] argValues = new Object[constructors.size()];
+
+        for (int i = 0; i &lt; constructors.size(); i++) &#123;
+            argClass[i] = Class.forName(constructors.get(i).getType());
+            argValues[i] = constructors.get(i).getValue();
+        &#125;
+
+        Constructor&lt;?&gt; constructor = aClass.getDeclaredConstructor(argClass);
+
+        return BeanUtils.instance(constructor,argValues);
+    &#125;
+
+    private void populateBean(Object bean,BeanDefinition beanDefinition) throws Exception&#123;
+        List&lt;PropertyValues&gt; propertys = beanDefinition.getPropertys();
+        if(!CollectionUtils.isEmpty(propertys))&#123;
+            Map&lt;String, PropertyValues&gt; propertysMap = propertys.stream().collect(Collectors.toMap(PropertyValues::getName, Function.identity()));
+            Field[] declaredFields = bean.getClass().getDeclaredFields();
+            for (int i = 0; i &lt; declaredFields.length - 1; i++) &#123;
+                Field field = declaredFields[i];
+                BeanUtils.setFieldValue(field,bean,propertysMap.get(field.getName()).getValue());
+            &#125;
+        &#125;
+    &#125;
+
+    public void registerBean(String beanName, BeanDefinition beanDefinition)&#123;
+        beanDefinitionMap.put(beanName, beanDefinition);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="5、定义xml解析器BeanDefinitionParser，帮助XmlApplicationContext解析xml文件"><a href="#5、定义xml解析器BeanDefinitionParser，帮助XmlApplicationContext解析xml文件" class="headerlink" title="5、定义xml解析器BeanDefinitionParser，帮助XmlApplicationContext解析xml文件"></a>5、定义xml解析器BeanDefinitionParser，帮助XmlApplicationContext解析xml文件</h3><pre><code>public class BeanDefinitionParser &#123;
+
+    public List&lt;BeanDefinition&gt; parseElement(InputStream inputStream) throws Exception &#123;
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder documentBuilder = builderFactory.newDocumentBuilder();
+        Document doc = documentBuilder.parse(inputStream);
+        Element element = doc.getDocumentElement();
+        return this.parseElement(element);
+    &#125;
+
+    private List&lt;BeanDefinition&gt; parseElement(Element root)&#123;
+        NodeList nl = root.getChildNodes();
+
+        List&lt;BeanDefinition&gt; beanDefinitions = new ArrayList&lt;&gt;();
+        for(int i = 0; i &lt; nl.getLength(); ++i) &#123;
+            Node node = nl.item(i);
+            if (node instanceof Element) &#123;
+                Element ele = (Element)node;
+                BeanDefinition beanDefinition = new BeanDefinition();
+                this.parseDefaultElement(ele, beanDefinition);
+                beanDefinitions.add(beanDefinition);
+            &#125;
+        &#125;
+        return beanDefinitions;
+    &#125;
+
+    private void parseDefaultElement(Element ele, BeanDefinition beanDefinition) &#123;
+        if(ele.getNodeName().equals(&quot;bean&quot;))&#123;
+            String id = ele.getAttribute(&quot;id&quot;);
+            String className = ele.getAttribute(&quot;class&quot;);
+            beanDefinition.setBeanName(id);
+            beanDefinition.setClassName(className);
+            //构造器 and 属性
+            this.parseConstructorArgElements(ele, beanDefinition);
+            this.parsePropertyElements(ele, beanDefinition);
+        &#125;
+    &#125;
+
+    private void parsePropertyElements(Element ele, BeanDefinition beanDefinition) &#123;
+
+    &#125;
+
+    private void parseConstructorArgElements(Element ele, BeanDefinition beanDefinition) &#123;
+        NodeList nl = ele.getChildNodes();
+
+        for(int i = 0; i &lt; nl.getLength(); ++i) &#123;
+            Node node = nl.item(i);
+            if (node.getNodeName().equals(&quot;constructor-arg&quot;)) &#123;
+                NamedNodeMap attributes = node.getAttributes();
+                String valueAttr = attributes.getNamedItem(&quot;value&quot;).getNodeValue();
+                String typeAttr = attributes.getNamedItem(&quot;type&quot;).getNodeValue();
+                String nameAttr = attributes.getNamedItem(&quot;name&quot;).getNodeValue();
+                List&lt;ConstructorValues&gt; constructors = beanDefinition.getConstructors();
+                constructors.add(new ConstructorValues(nameAttr,typeAttr,valueAttr));
+            &#125;
+        &#125;
+    &#125;
+&#125;
+</code></pre>
+<h3 id="6、定义ApplicationContext的具体实现XmlApplicationContext，主要将xml文件转化为BeanDefinition对象"><a href="#6、定义ApplicationContext的具体实现XmlApplicationContext，主要将xml文件转化为BeanDefinition对象" class="headerlink" title="6、定义ApplicationContext的具体实现XmlApplicationContext，主要将xml文件转化为BeanDefinition对象"></a>6、定义ApplicationContext的具体实现XmlApplicationContext，主要将xml文件转化为BeanDefinition对象</h3><pre><code>public class XmlApplicationContext extends ApplicationContext&#123;
+
+    private final String classPath;
+
+    public XmlApplicationContext(String classPath) throws Exception &#123;
+        this.classPath = classPath;
+        this.init();
+    &#125;
+
+    private void init() throws Exception &#123;
+        InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(classPath);
+        List&lt;BeanDefinition&gt; beanDefinitions = new BeanDefinitionParser().parseElement(in);
+        beanDefinitions.forEach(beanDefinition -&gt; &#123;
+            this.registerBean(beanDefinition.getBeanName(),beanDefinition);
+        &#125;);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="7、定义StudentTest对象"><a href="#7、定义StudentTest对象" class="headerlink" title="7、定义StudentTest对象"></a>7、定义StudentTest对象</h3><pre><code>@Data
+public class StudentTest &#123;
+
+    private String name;
+    private String age;
+
+    public StudentTest(String name, String age) &#123;
+        this.name = name;
+        this.age = age;
+    &#125;
+
+    void learn()&#123;
+        System.out.println(&quot;学生正在学习&quot;);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="8、配置文件BeanFactory-xml"><a href="#8、配置文件BeanFactory-xml" class="headerlink" title="8、配置文件BeanFactory.xml"></a>8、配置文件BeanFactory.xml</h3><pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;
+       xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+       xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd&quot;&gt;
+    &lt;bean id=&quot;student&quot; class=&quot;com.juju.base.StudentTest&quot;&gt;
+        &lt;constructor-arg value=&quot;小橘子&quot; name=&quot;name&quot; type=&quot;java.lang.String&quot;/&gt;
+        &lt;constructor-arg value=&quot;20&quot; name=&quot;age&quot; type=&quot;java.lang.String&quot;/&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;
+</code></pre>
+<h3 id="9、测试"><a href="#9、测试" class="headerlink" title="9、测试"></a>9、测试</h3><pre><code>public static void main(String[] args) throws Exception &#123;
+    XmlApplicationContext xmlApplicationContext = new XmlApplicationContext(&quot;BeanFactory.xml&quot;);
+    StudentTest student = (StudentTest) xmlApplicationContext.getBean(&quot;student&quot;);
+    System.out.println(JSON.toJSONString(student));
+&#125;
+输出：
+&#123;&quot;age&quot;:&quot;20&quot;,&quot;name&quot;:&quot;小橘子&quot;&#125;
+</code></pre>
+<p>以上完成了IOC容器注入的基本实现，还有属性的注入以及三级缓存尚未实现</p>
+<h2 id="IOC和AOP的区别"><a href="#IOC和AOP的区别" class="headerlink" title="IOC和AOP的区别"></a>IOC和AOP的区别</h2><p>IOC和AOP都是基于代理对象和反射来实现的，AOP关注横切的抽象和重用，IOC关注的是对象生命周期和依赖关系的管理。</p>
+]]></content>
+      <categories>
+        <category>Spring</category>
+      </categories>
+      <tags>
+        <tag>Spring IOC</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis消息队列的简单实现</title>
+    <url>/code-ju/2022/04/17/Redis%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%9A%84%E7%AE%80%E5%8D%95%E5%AE%9E%E7%8E%B0/</url>
+    <content><![CDATA[<h2 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h2><p>最近项目上关于工作流有个需求，要求实现在某个任务节点发送消息给候选人。消息的类型不固定，只有邮件和站内信，<br>消息队列的实现有很多种，Redis、RocketMQ、Kafka等等，由于并发量不是很大，目前采用Redis进行简单实现。</p>
+<h2 id="设计思路"><a href="#设计思路" class="headerlink" title="设计思路"></a>设计思路</h2><p>虽然目前消息队列采用Redis进行实现，但是随着业务的变化，技术手段可能也会发生变化，所以消息队列的实现要根据配置文配置的类型进行读取，同时发送消息类型可能也不只邮件和站内信两种，所以处理消息的实现也要根据消息类型进行判断。</p>
+<h2 id="具体实现"><a href="#具体实现" class="headerlink" title="具体实现"></a>具体实现</h2><p>项目的目录结构如下：</p>
+<p><img src="/code-ju/images/pasted-27.png" alt="upload successful"><br>消息队列一定既有生产者（发送消息的一方），又有消费者（接收消息的一方），同时还要有消息的传输</p>
+<h3 id="第一步，定义消息传输的接口"><a href="#第一步，定义消息传输的接口" class="headerlink" title="第一步，定义消息传输的接口"></a>第一步，定义消息传输的接口</h3><pre><code>/**
+ * 消息传输对象
+ */
+public interface MessageDTO&lt;T extends Serializable&gt; extends Serializable &#123;
+
+   /**
+    * 具体消费者的标识
+    */
+   String getType();
+
+   /**
+    * 消费者的对象
+    */
+   T getData();
+&#125;
+</code></pre>
+<p>为该接口做一个默认实现<br>    &#x2F;**<br>     * 默认消息<br>     <em>&#x2F;<br>    @Data<br>    public class DefaultMessageDTO<T extends Serializable> implements MessageDTO<T> {<br>       &#x2F;</em>*<br>        * 消息类型<br>        <em>&#x2F;<br>       private String type;<br>       &#x2F;</em>*<br>        * 消息对象<br>        *&#x2F;<br>       private T data;</p>
+<pre><code>   public DefaultMessageDTO(String type, T data) &#123;
+      this.type = type;
+      this.data = data;
+   &#125;
+&#125;
+</code></pre>
+<p>提供消息对象的具体实现，封装消息的细节<br>    &#x2F;**<br>     * 消息的细节<br>     * 比如发送方、标题、内容、样式等等<br>     *&#x2F;<br>    @Data<br>    public class Message implements Serializable {</p>
+<pre><code>    private String subject;
+
+    private String content;
+&#125;
+</code></pre>
+<h3 id="第二步，定义一个顶级的发送消息的接口，后面所有生产者都要实现这个接口"><a href="#第二步，定义一个顶级的发送消息的接口，后面所有生产者都要实现这个接口" class="headerlink" title="第二步，定义一个顶级的发送消息的接口，后面所有生产者都要实现这个接口"></a>第二步，定义一个顶级的发送消息的接口，后面所有生产者都要实现这个接口</h3><pre><code>/**
+ * 消息提供者
+ */
+public interface MessageProducer&lt;T extends Serializable&gt; &#123;
+    /**
+     * 发送消息
+     * @param messageDTO
+     */
+    void send(MessageDTO&lt;T&gt; messageDTO);
+&#125;
+</code></pre>
+<h3 id="第三步，由于要根据不同的消息类型处理不同的消息，所以要先定义消息处理的接口，后续所有消息处理的具体实现都要实现这两个方法，同时定义属于他们自己的type"><a href="#第三步，由于要根据不同的消息类型处理不同的消息，所以要先定义消息处理的接口，后续所有消息处理的具体实现都要实现这两个方法，同时定义属于他们自己的type" class="headerlink" title="第三步，由于要根据不同的消息类型处理不同的消息，所以要先定义消息处理的接口，后续所有消息处理的具体实现都要实现这两个方法，同时定义属于他们自己的type"></a>第三步，由于要根据不同的消息类型处理不同的消息，所以要先定义消息处理的接口，后续所有消息处理的具体实现都要实现这两个方法，同时定义属于他们自己的type</h3><pre><code>/**
+ * 消息处理的接口
+ */
+public interface MessageHandler&lt;T extends Serializable&gt; &#123;
+    /**
+     * 获取消息处理的类型
+     * @return
+     */
+    String getType();
+
+    /**
+     * 消息处理
+     * @param messageDTO
+     * @return
+     */
+    boolean handlerMessage(MessageDTO&lt;T&gt; messageDTO);
+&#125;
+</code></pre>
+<h3 id="第四步、对MessageHandler进行一个简单实现，就不具体描述细节了"><a href="#第四步、对MessageHandler进行一个简单实现，就不具体描述细节了" class="headerlink" title="第四步、对MessageHandler进行一个简单实现，就不具体描述细节了"></a>第四步、对MessageHandler进行一个简单实现，就不具体描述细节了</h3><pre><code>@Component
+public class SimpleMessageHandler implements MessageHandler&lt;Message&gt;&#123;
+    @Override
+    public String getType() &#123;
+        return &quot;simple&quot;;
+    &#125;
+
+    @Override
+    public boolean handlerMessage(MessageDTO&lt;Message&gt; messageDTO) &#123;
+        System.out.println(&quot;消息标题：&quot; + messageDTO.getData().getSubject());
+        System.out.println(&quot;消息内容：&quot; + messageDTO.getData().getContent());
+        return true;
+    &#125;
+&#125;
+</code></pre>
+<h3 id="第五步、开始设计生产者的具体实现"><a href="#第五步、开始设计生产者的具体实现" class="headerlink" title="第五步、开始设计生产者的具体实现"></a>第五步、开始设计生产者的具体实现</h3><p>定义一个集合message，每次发送消息从右边push，消费时从左边弹出</p>
+<pre><code>/**
+ * redis消息队列的实现
+ */
+@Slf4j
+public class RedisMessageQueueProducer implements MessageProducer&#123;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    @Override
+    public void send(MessageDTO messageDTO) &#123;
+        if (messageDTO == null)
+            return;
+        BoundListOperations&lt;String,MessageDTO&gt; messageQueue = redisTemplate.boundListOps(&quot;message&quot;);
+        messageQueue.rightPush(messageDTO);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="第六步、初始化所有提供消息处理的实现类，为消费者提供处理消息的方法"><a href="#第六步、初始化所有提供消息处理的实现类，为消费者提供处理消息的方法" class="headerlink" title="第六步、初始化所有提供消息处理的实现类，为消费者提供处理消息的方法"></a>第六步、初始化所有提供消息处理的实现类，为消费者提供处理消息的方法</h3><pre><code>public abstract class AbstractMessageQueue implements ApplicationListener&lt;ContextRefreshedEvent&gt; &#123;
+    //初始化所有提供消息处理的实现类，每一个MessageHandler中的type就是他的key
+    private final Map&lt;String, MessageHandler&lt;Serializable&gt;&gt; registerMessageHandler = new ConcurrentHashMap&lt;&gt;();
+
+    private ApplicationContext applicationContext;
+
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) &#123;
+        //老大为空我就是老大
+        if(null == event.getApplicationContext().getParent())&#123;
+            this.applicationContext = event.getApplicationContext();
+            applicationContext.getBeansOfType(MessageHandler.class).forEach((s, messageHandler) -&gt; &#123;
+         registerMessageHandler.put(messageHandler.getType(),messageHandler);
+            &#125;);
+            completeAfter();
+        &#125;
+    &#125;
+
+    void completeAfter()&#123;
+        //为消息队列的具体实现做扩容
+    &#125;
+
+    public MessageHandler&lt;Serializable&gt; getMessageHandler(String type)&#123;
+        return registerMessageHandler.get(type);
+    &#125;
+&#125;
+</code></pre>
+<h3 id="第七步、消费者的具体实现"><a href="#第七步、消费者的具体实现" class="headerlink" title="第七步、消费者的具体实现"></a>第七步、消费者的具体实现</h3><p>消费者采用守护线程、只要线程不被中断，就会隔一段时间从列表中取出消息体，消费消息<br>消费消息采用线程池调用的方式实现，其阻塞队列使用的是SynchronousQueue，因为是线程安全的，吞吐量较高。</p>
+<pre><code>/**
+ * Redis消费队列
+ */  
+@Slf4j
+public class RedisMessageQueueConsumer extends AbstractMessageQueue implements DisposableBean &#123;
+
+    /**
+     * redis-queue
+     */
+    private BoundListOperations messageQueue;
+
+    /**
+     * redis-handle 线程池
+     */
+    private ThreadPoolExecutor threadPoolExecutor;
+
+    /**
+     * redis-queue 监听
+     */
+    private RedisQueueListener redisQueueListener;
+
+    @Override
+    public void destroy() throws Exception &#123;
+        redisQueueListener.interrupt();
+        threadPoolExecutor.shutdown();
+        boolean b = threadPoolExecutor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+        log.info(&quot;thread shutdown &#123;&#125;&quot;, b);
+    &#125;
+
+    @Override
+    void completeAfter() &#123;
+        this.messageQueue = getApplicationContext().getBean(&quot;redisTemplate&quot;,RedisTemplate.class).boundListOps(&quot;message&quot;);
+        this.threadPoolExecutor =new ThreadPoolExecutor(1,
+                Runtime.getRuntime().availableProcessors() * 2 + 1,
+                5,
+                TimeUnit.MINUTES,
+                new SynchronousQueue&lt;&gt;(),
+                (r, executor) -&gt; &#123;
+                    try &#123;
+                        if (!executor.isShutdown()) &#123;
+                            executor.getQueue().put(r);
+                        &#125;
+                    &#125; catch (InterruptedException e) &#123;
+                        log.error(e.getMessage(),e);
+                        Thread.currentThread().interrupt();
+                    &#125;
+                &#125;);
+        this.redisQueueListener = new RedisQueueListener();
+        redisQueueListener.setDaemon(true);
+        redisQueueListener.start();
+    &#125;
+
+    private class RedisQueueListener extends Thread &#123;
+        private void submitMessage(Object data)&#123;
+            if(null == data) return;
+            if(data instanceof MessageDTO)&#123;
+                MessageDTO&lt;Serializable&gt; message = (MessageDTO&lt;Serializable&gt;) data;
+                MessageHandler&lt;Serializable&gt; messageHandler = getMessageHandler(message.getType());
+                if(null == messageHandler) return;
+                threadPoolExecutor.execute(() -&gt; &#123;
+                    try &#123;
+                        messageHandler.handlerMessage(message);
+                    &#125;catch (Exception e)&#123;
+                        log.error(e.getMessage(),e);
+                    &#125;
+                &#125;);
+            &#125;
+        &#125;
+
+        @Override
+        public void run() &#123;
+            while (!Thread.interrupted()) &#123;
+                try &#123;                       submitMessage(messageQueue.leftPop(1000,TimeUnit.MILLISECONDS));
+                &#125; catch (Exception e) &#123;
+                    log.warn(&quot;redis queue submit exception&quot;, e);
+                &#125;
+            &#125;
+            log.info(&quot;exit redis queue&quot;);
+        &#125;
+    &#125;
+&#125;
+</code></pre>
+<h3 id="第八步、生产者和消费者的具体实现已经完成了，现在要开始根据配置文件动态注入容器中"><a href="#第八步、生产者和消费者的具体实现已经完成了，现在要开始根据配置文件动态注入容器中" class="headerlink" title="第八步、生产者和消费者的具体实现已经完成了，现在要开始根据配置文件动态注入容器中"></a>第八步、生产者和消费者的具体实现已经完成了，现在要开始根据配置文件动态注入容器中</h3><p>1、在配置文件中定义message.type &#x3D; redis<br>2、定义一个枚举，指定每一个消息队列的实现类型和实现类，之后每添加一个消息队列的实现就要在该枚举里维护一个对应的类型</p>
+<pre><code>/**
+ * 定义每个消息队列的实现
+ */
+public enum MessageQueueType &#123;
+    REDIS(&quot;redis&quot;, RedisMessageQueueConfiguration.class);
+
+    private String type;
+
+    private Class aClass;
+
+    MessageQueueType(String type, Class aClass) &#123;
+        this.type = type;
+        this.aClass = aClass;
+    &#125;
+
+    public String getType() &#123;
+        return type;
+    &#125;
+
+    public Class getAClass() &#123;
+        return aClass;
+    &#125;
+
+    public static MessageQueueType from(String type) &#123;
+        for (MessageQueueType messageQueueType : values()) &#123;
+            if (messageQueueType.getType().equals(type)) &#123;
+                return messageQueueType;
+            &#125;
+        &#125;
+        return null;
+    &#125;
+&#125;
+</code></pre>
+<p>3、定义注入条件MessageQueueConditional</p>
+<pre><code>public class MessageQueueConditional implements Condition &#123;
+    @Override
+    public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) &#123;
+        String sourceClass = &quot;&quot;;
+        if (annotatedTypeMetadata instanceof ClassMetadata) &#123;
+            sourceClass = ((ClassMetadata) annotatedTypeMetadata).getClassName();
+        &#125;
+        String value = conditionContext.getEnvironment().getProperty(&quot;message.type&quot;);
+        if(StringUtils.isEmpty(value))
+            return false;
+        MessageQueueType messageQueueType = MessageQueueType.from(value);
+        if(null == messageQueueType)
+            return false;
+        return sourceClass.equals(messageQueueType.getAClass().getName());
+    &#125;
+&#125;
+</code></pre>
+<p>4、使用条件动态加载bean</p>
+<pre><code>@Configuration
+@Conditional(MessageQueueConditional.class)
+public class RedisMessageQueueConfiguration &#123;
+    @Bean
+    public RedisMessageQueueProducer producer()&#123;
+        return new RedisMessageQueueProducer();
+    &#125;
+
+    @Bean
+    public RedisMessageQueueConsumer consumer()&#123;
+        return new RedisMessageQueueConsumer();
+    &#125;
+&#125;
+</code></pre>
+<p> 至此已经完成Redis消息队列的简单实现，测试一下</p>
+<pre><code>@GetMapping(&quot;send&quot;)
+public void sendMessage()&#123;
+    Message message = new Message();
+    message.setSubject(&quot;橘橘测试&quot;);
+    message.setContent(&quot;小橘子测试能不能发送消息&quot;);
+    messageProducer.send(new DefaultMessageDTO&lt;&gt;(&quot;simple&quot;,message));
+&#125;
+
+响应结果：
+消息标题：橘橘测试
+消息内容：小橘子测试能不能发送消息
+</code></pre>
+<p>成功～～～    </p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>Redis</tag>
+        <tag>消息队列</tag>
+      </tags>
+  </entry>
+</search>
